@@ -1,6 +1,6 @@
 from gigachat import GigaChat
 from config import GIGACHAT_API_TOKEN
-from tools import find_nodes_in_city_tool
+from tools.osm import find_nodes_in_city_tool
 
 SYSTEM_PROMPT = """
 Ты извлекаешь признаки местности из текста пользователя.

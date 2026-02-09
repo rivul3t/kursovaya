@@ -3,9 +3,7 @@ import asyncio
 import httpx
 
 from config import OVERPASS_URL, REQUEST_TIMEOUT, REQUEST_RETRIES
-from logger import setup_logger
-
-logger = setup_logger("overpass")
+from main import logger
 
 OSM_TAG_MAP = {
     "bus_stop": ('node', 'highway', 'bus_stop'),
