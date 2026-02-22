@@ -2,47 +2,34 @@ import os
 from groq import Groq
 
 
-antinomy_statements = {
-    2: "The world has a beginning in time and is limited in space",
-    3: "Every composite substance consists of simple parts",
-    1: "There exists an absolutely necessary being as the cause of the world",
-    4: "Nothing composite consists of simple parts",
-    7: "Freedom exists as a special kind of causality",
-    5: "The world is infinite in time and space",
-    6: "Freedom does not exist; everything is determined by laws of nature",
-    8: "No absolutely necessary being exists"
-}
-
-gold_conflicts = {
-    (1, 2),
-    (3, 4),
-    (5, 6),
-    (7, 8)
-}
-
-
-prompt = """
-You are an expert in logical reasoning and philosophical text analysis.
-
-Step 1: Analyze the following statements carefully.
-Step 2: Reason step by step, checking logical compatibility of each pair.
-Step 3: Identify conflicts (contradictions) between statements.
-Step 4: Output STRICTLY a JSON in this format:
-
-{
-  "conflicts": [
-    {
-      "statements": [id1, id2],
-      "explanation": "brief logical explanation"
-    }
-  ]
-}
-
-Statements:
+text = """
+Philosophers have long debated whether the universe has a beginning in time. Some argue that it must have started at some point, while others insist that it extends infinitely. 
+Similarly, every complex object seems to be composed of simpler parts, yet some philosophers maintain that nothing is truly simple, and divisibility is infinite. 
+The question of freedom also arises: humans seem to act freely, yet all events might be determined by natural laws. 
+Finally, some claim that there must be a necessary being as the ultimate cause of everything, while others deny the existence of any absolutely necessary being.
 """
 
-for idx, text in antinomy_statements.items():
-    prompt += f"{idx}. {text}\n"
+
+prompt = f"""
+You are an expert in philosophical and logical analysis.
+
+Analyze the following text carefully. Your task is to:
+1. Identify statements that are in logical conflict with each other.
+2. Explain why they contradict.
+3. Output STRICTLY a JSON in this format:
+
+{{
+  "conflicts": [
+    {{
+      "statements": ["statement 1", "statement 2"],
+      "explanation": "brief logical explanation of the conflict"
+    }}
+  ]
+}}
+
+Text to analyze:
+{text}
+"""
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
