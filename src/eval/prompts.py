@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+from .types import EvalSample
+
+
+def format_documents(sample: EvalSample) -> str:
+    chunks = []
+    for i, doc in enumerate(sample.documents):
+        title = str(doc.get("title", f"doc_{i}"))
+        text = str(doc.get("text", "")).strip()
+        chunks.append(f"[DOC {i}] {title}\n{text}")
+    return "\n\n".join(chunks)
+
+
+def build_detection_prompt(sample: EvalSample, prompt_style: str = "basic") -> str:
+    docs = format_documents(sample)
+
+    if prompt_style == "cot":
+        return (
+            "You are a context validator for retrieved documents.\n"
+            "Task: decide whether there is any contradiction in the set of documents.\n"
+            "Think step by step, then answer with exactly one line: YES or NO.\n\n"
+            f"Documents:\n{docs}"
+        )
+
+    return (
+        "You are a context validator for retrieved documents.\n"
+        "Task: decide whether there is any contradiction in the set of documents.\n"
+        "Answer with exactly one word: YES or NO.\n\n"
+        f"Documents:\n{docs}"
+    )
+
+
+def build_type_prompt(sample: EvalSample, prompt_style: str = "basic") -> str:
+    docs = format_documents(sample)
+
+    if prompt_style == "cot":
+        return (
+            "You are a context validator for retrieved documents.\n"
+            "Task: identify the conflict type if any. Labels: none, self, pair, conditional.\n"
+            "Think step by step, then answer with exactly one label.\n\n"
+            f"Documents:\n{docs}"
+        )
+
+    return (
+        "You are a context validator for retrieved documents.\n"
+        "Task: identify the conflict type if any. Labels: none, self, pair, conditional.\n"
+        "Answer with exactly one label.\n\n"
+        f"Documents:\n{docs}"
+    )
+
+
+def build_segmentation_prompt(
+    sample: EvalSample,
+    guided: bool,
+    prompt_style: str = "basic",
+) -> str:
+    docs = format_documents(sample)
+    mode = "guided" if guided else "blind"
+
+    type_clause = (
+        f"The conflict type is: {sample.conflict_type}."
+        if guided
+        else "The conflict type is unknown."
+    )
+
+    if prompt_style == "cot":
+        return (
+            "You are a context validator for retrieved documents.\n"
+            f"Task: identify which document indices contain conflicting information. Mode: {mode}.\n"
+            f"{type_clause}\n"
+            "Think step by step, then answer with a JSON array of integers like [0] or [1,2].\n\n"
+            f"Documents:\n{docs}"
+        )
+
+    return (
+        "You are a context validator for retrieved documents.\n"
+        f"Task: identify which document indices contain conflicting information. Mode: {mode}.\n"
+        f"{type_clause}\n"
+        "Answer with a JSON array of integers like [0] or [1,2].\n\n"
+        f"Documents:\n{docs}"
+    )
