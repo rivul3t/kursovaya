@@ -11,24 +11,60 @@ from .types import EvalSample
 
 
 class HotpotEvaluator:
-    def __init__(self, llm: LLMBackend, prompt_style: str = 'basic') -> None:
+    def __init__(self, llm, prompt_style="basic", logger=None):
         self.llm = llm
         self.prompt_style = prompt_style
+        self.logger = logger
 
-    def predict_detection(self, sample: EvalSample) -> bool:
+    def predict_detection(self, sample):
         prompt = build_detection_prompt(sample, prompt_style=self.prompt_style)
         raw = self.llm.generate(prompt)
-        return parse_yes_no(raw)
+        pred = parse_yes_no(raw)
 
-    def predict_type(self, sample: EvalSample) -> str:
+        if self.logger:
+            self.logger.log({
+                "task": "detection",
+                "sample_id": sample.sample_id,
+                "prompt": prompt,
+                "response": raw,
+                "prediction": pred,
+                "ground_truth": sample.conflict_type != "none",
+            })
+
+        return pred
+
+    def predict_type(self, sample):
         prompt = build_type_prompt(sample, prompt_style=self.prompt_style)
         raw = self.llm.generate(prompt)
-        return parse_conflict_type(raw)
+        pred = parse_conflict_type(raw)
+    
+        if self.logger:
+            self.logger.log({
+                "task": "type",
+                "sample_id": sample.sample_id,
+                "response": raw,
+                "prediction": pred,
+                "ground_truth": sample.conflict_type,
+            })
+    
+        return pred
 
-    def predict_segmentation(self, sample: EvalSample, guided: bool) -> List[int]:
+    def predict_segmentation(self, sample, guided: bool):
         prompt = build_segmentation_prompt(sample, guided=guided, prompt_style=self.prompt_style)
         raw = self.llm.generate(prompt)
-        return parse_indices(raw)
+        pred = parse_indices(raw)
+
+        if self.logger:
+            self.logger.log({
+                "task": "segmentation",
+                "mode": "guided" if guided else "blind",
+                "sample_id": sample.sample_id,
+                "response": raw,
+                "prediction": pred,
+                "ground_truth": sample.conflicting_doc_indices,
+            })
+
+        return pred
 
     def evaluate_detection(self, samples: List[EvalSample]) -> Dict[str, float]:
         y_true = [s.conflict_type != 'none' for s in samples]

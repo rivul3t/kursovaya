@@ -12,9 +12,9 @@ def _clean_text(text: str) -> str:
 
 def parse_yes_no(text: str) -> bool:
     t = _clean_text(text)
-    if re.search(r'yes', t):
+    if re.search(r'yes', t, re.IGNORECASE):
         return True
-    if re.search(r'no', t):
+    if re.search(r'no', t, re.IGNORECASE):
         return False
     return False
 
