@@ -37,16 +37,17 @@ class HotpotEvaluator:
         prompt = build_type_prompt(sample, prompt_style=self.prompt_style)
         raw = self.llm.generate(prompt)
         pred = parse_conflict_type(raw)
-    
+
         if self.logger:
             self.logger.log({
                 "task": "type",
                 "sample_id": sample.sample_id,
+                "prompt": prompt,
                 "response": raw,
                 "prediction": pred,
                 "ground_truth": sample.conflict_type,
             })
-    
+
         return pred
 
     def predict_segmentation(self, sample, guided: bool):
@@ -59,6 +60,7 @@ class HotpotEvaluator:
                 "task": "segmentation",
                 "mode": "guided" if guided else "blind",
                 "sample_id": sample.sample_id,
+                "prompt": prompt,
                 "response": raw,
                 "prediction": pred,
                 "ground_truth": sample.conflicting_doc_indices,

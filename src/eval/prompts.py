@@ -38,6 +38,10 @@ def build_type_prompt(sample: EvalSample, prompt_style: str = "basic") -> str:
         return (
             "You are a context validator for retrieved documents.\n"
             "Task: identify the conflict type if any. Labels: none, self, pair, conditional.\n"
+            "1. Self-Contradiction: Conflicting information within a single document.\n"
+            "2. Pair Contradiction: Conflicting information between two documents.\n"
+            "3. Conditional Contradiction: Three documents where the third \n"
+            "document makes the first two contradict each other.\n"
             "Think step by step, then answer with exactly one label.\n\n"
             f"Documents:\n{docs}"
         )
@@ -45,6 +49,10 @@ def build_type_prompt(sample: EvalSample, prompt_style: str = "basic") -> str:
     return (
         "You are a context validator for retrieved documents.\n"
         "Task: identify the conflict type if any. Labels: none, self, pair, conditional.\n"
+        "1. Self-Contradiction: Conflicting information within a single document.\n"
+        "2. Pair Contradiction: Conflicting information between two documents.\n"
+        "3. Conditional Contradiction: Three documents where the third \n"
+        "document makes the first two contradict each other.\n"
         "Answer with exactly one label.\n\n"
         f"Documents:\n{docs}"
     )
@@ -56,27 +64,29 @@ def build_segmentation_prompt(
     prompt_style: str = "basic",
 ) -> str:
     docs = format_documents(sample)
-    mode = "guided" if guided else "blind"
 
-    type_clause = (
-        f"The conflict type is: {sample.conflict_type}."
-        if guided
-        else "The conflict type is unknown."
-    )
-
-    if prompt_style == "cot":
-        return (
-            "You are a context validator for retrieved documents.\n"
-            f"Task: identify which document indices contain conflicting information. Mode: {mode}.\n"
-            f"{type_clause}\n"
-            "Think step by step, then answer with a JSON array of integers like [0] or [1,2].\n\n"
-            f"Documents:\n{docs}"
-        )
+    conflict_type = sample.conflict_type if guided else "unknown"
 
     return (
-        "You are a context validator for retrieved documents.\n"
-        f"Task: identify which document indices contain conflicting information. Mode: {mode}.\n"
-        f"{type_clause}\n"
-        "Answer with a JSON array of integers like [0] or [1,2].\n\n"
-        f"Documents:\n{docs}"
+        "Given a set of documents and a known conflict type, your task is to identify "
+        "which document(s) contain the conflicting information.\n\n"
+
+        f"Conflict Type: {conflict_type}\n\n"
+
+        "Instructions:\n"
+        "1. Carefully read all the provided documents.\n"
+        "2. Keep in mind the given conflict type.\n"
+        "3. Analyze the content to identify which document(s) contribute to the specified type of contradiction.\n"
+        "4. List the numbers of the documents that contain the conflicting information.\n"
+        "5. Think step by step before answering.\n\n"
+
+        "Your response should be in the following format:\n"
+        "<documents>[List the numbers of the documents, separated by commas]</documents>\n\n"
+
+        "Definitions of Conflict Types:\n"
+        "- Self-Contradiction: Conflicting information within a single document.\n"
+        "- Pair Contradiction: Conflicting information between two documents.\n"
+        "- Conditional Contradiction: Three documents where the third document makes the first two contradict each other, although they don’t contradict directly.\n\n"
+
+        f"Here are the documents:\n{docs}"
     )

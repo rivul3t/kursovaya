@@ -27,21 +27,14 @@ def parse_conflict_type(text: str) -> str:
     return 'none'
 
 
-def parse_indices(text: str) -> List[int]:
-    m = re.search(r'\[[^\]]*\]', text)
+def parse_indices(text: str) -> list[int]:
+    import re, json
+
+    m = re.search(r"<documents>(.*?)</documents>", text, re.S)
     if m:
-        chunk = m.group(0)
-        try:
-            data = json.loads(chunk)
-            if isinstance(data, list):
-                out = []
-                for x in data:
-                    try:
-                        out.append(int(x))
-                    except Exception:
-                        pass
-                return sorted(set(out))
-        except Exception:
-            pass
-    nums = re.findall(r'\d+', text)
+        content = m.group(1)
+    else:
+        content = text
+
+    nums = re.findall(r"\d+", content)
     return sorted(set(int(n) for n in nums))
