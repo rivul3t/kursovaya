@@ -14,7 +14,7 @@ class LLMBackend(Protocol):
         ...
 
 
-class MockBackend:
+class MockBackend(LLMBackend):
     def __init__(self, seed: int = 0) -> None:
         self.rng = random.Random(seed)
 
@@ -32,14 +32,15 @@ class MockBackend:
         return '<text>Placeholder output.</text>'
 
 
-class OpenAIBackend:
-    def __init__(self, model: str) -> None:
+class OpenAIBackend(LLMBackend):
+    def __init__(self, model: str, base_url) -> None:
         self.model = model
+        self.base_url = base_url
         try:
             from openai import OpenAI
         except Exception as exc:
             raise RuntimeError('Install with: pip install openai') from exc
-        self._client = OpenAI(api_key=os.getenv('LLM_RESAYIL_API_KEY'), base_url=os.getenv('OPEN_AI_BASE_URL'))
+        self._client = OpenAI(api_key=os.getenv('LLM_RESAYIL_API_KEY'), base_url=self.base_url)
 
     def generate(self, prompt: str, *, temperature=0.2, max_tokens=512) -> str:
         for attempt in range(5):
@@ -65,7 +66,7 @@ class OpenAIBackend:
         raise RuntimeError("Failed after retries")
 
 
-class GroqBackend:
+class GroqBackend(LLMBackend):
     def __init__(self, model: str) -> None:
         self.model = model
         try:
@@ -74,7 +75,7 @@ class GroqBackend:
             raise RuntimeError('Install with: pip install groq') from exc
         self._client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
 
-    def generate(self, prompt: str, *, temperature: float = 0.2, max_tokens: int = 4096) -> str:
+    def generate(self, prompt: str, *, temperature: float = 0.2, max_tokens: int = 10256) -> str:
         resp = self._client.chat.completions.create(
             model=self.model,
             messages=[{'role': 'user', 'content': prompt}],
@@ -86,7 +87,7 @@ class GroqBackend:
             return content
         raise RuntimeError('Could not extract text from Groq response')
 
-class GeminiBackend:
+class GeminiBackend(LLMBackend):
     def __init__(self, model: str) -> None:
         self.model = model
         try:

@@ -18,6 +18,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument('--input-jsonl', type=str, required=True, help='Path to generated dataset JSONL')
     parser.add_argument('--output-json', type=str, required=True, help='Where to store metrics')
     parser.add_argument("--backend", choices=["mock", "openai", "groq", "gemini"], default="mock")
+    parser.add_argument('--base-url', type=str, default='https://api.openai.com/v1')
     parser.add_argument('--model', type=str, default='gpt-4.1-mini')
     parser.add_argument('--prompt-style', choices=['basic', 'cot'], default='basic')
     return parser.parse_args(argv)
@@ -27,7 +28,7 @@ def build_backend(args: argparse.Namespace):
     if args.backend == 'mock':
         return MockBackend()
     if args.backend == 'openai':
-        return OpenAIBackend(model=args.model)
+        return OpenAIBackend(model=args.model, base_url=args.base_url)
     if args.backend == 'groq':
         return GroqBackend(model=args.model)
     if args.backend == "gemini":
