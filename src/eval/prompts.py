@@ -75,7 +75,7 @@ def build_segmentation_prompt(
 
         "Instructions:\n"
         "1. Carefully read all the provided documents.\n"
-        "2. Keep in mind the given conflict type.\n"
+        "2. Keep in mind the given conflict type or detect by yourself if type is unknown.\n"
         "3. Analyze the content to identify which document(s) contribute to the specified type of contradiction.\n"
         "4. List the numbers of the documents that contain the conflicting information.\n"
         "5. Think step by step before answering.\n\n"

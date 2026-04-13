@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import torch
 import argparse
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from openai_harmony import (
     Author,
@@ -26,11 +26,19 @@ args = parser.parse_args()
 
 model_id = args.model
 
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16,
+    bnb_4bit_use_double_quant=True,
+)
+
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     device_map="auto",
-    torch_dtype="auto"
+    torch_dtype="auto",
+    quantization_config=bnb_config,
 )
 
 encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
@@ -46,50 +54,75 @@ class ChatRequest(BaseModel):
 @app.post("/v1/chat/completions")
 def chat(req: ChatRequest):
 
-    user_msg = req.messages[-1]["content"]
+    messages = req.messages
 
-    system_message = (
-        SystemContent.new()
-        .with_model_identity("You are a helpful assistant")
-        .with_reasoning_effort(ReasoningEffort.HIGH)
-    )
+    if is_gpt_oss(model_id):
 
-    developer_message = (
-        DeveloperContent.new()
-        .with_instructions("Follow system instructions")
-    )
+        system_message = (
+            SystemContent.new()
+            .with_model_identity("You are a helpful assistant")
+            .with_reasoning_effort(ReasoningEffort.MEDIUM)
+        )
 
-    convo = Conversation.from_messages([
-        Message.from_role_and_content(Role.SYSTEM, system_message),
-        Message.from_role_and_content(Role.DEVELOPER, developer_message),
-        Message.from_role_and_content(Role.USER, user_msg),
-    ])
+        developer_message = (
+            DeveloperContent.new()
+            .with_instructions("Follow system instructions")
+        )
 
-    tokens = encoding.render_conversation_for_completion(convo, Role.ASSISTANT)
+        convo_messages = [
+            Message.from_role_and_content(Role.SYSTEM, system_message),
+            Message.from_role_and_content(Role.DEVELOPER, developer_message),
+        ]
 
-    inputs = {"input_ids": torch.tensor([tokens]).to(model.device)}
+        for m in messages:
+            if m["role"] == "user":
+                convo_messages.append(
+                    Message.from_role_and_content(Role.USER, m["content"])
+                )
 
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=req.max_tokens,
-        temperature=req.temperature,
-        do_sample=True,
-    )
+        convo = Conversation.from_messages(convo_messages)
 
-    new_tokens = outputs[0][len(tokens):].tolist()
+        tokens = encoding.render_conversation_for_completion(convo, Role.ASSISTANT)
 
-    parsed = encoding.parse_messages_from_completion_tokens(
-        new_tokens,
-        Role.ASSISTANT
-    )
+        inputs = {"input_ids": torch.tensor([tokens]).to(model.device)}
 
-    final_text = ""
-    for m in parsed:
-        if m.channel == "final":
-            final_text += m.content
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=req.max_tokens,
+            temperature=req.temperature,
+            do_sample=True,
+        )
 
-    if not final_text and parsed:
-        final_text = parsed[-1].content
+        new_tokens = outputs[0][len(tokens):].tolist()
+
+        parsed = encoding.parse_messages_from_completion_tokens(
+            new_tokens,
+            Role.ASSISTANT
+        )
+
+        final_text = ""
+        for m in parsed:
+            if m.channel == "final":
+                final_text += m.content
+
+    else:
+
+        inputs = tokenizer.apply_chat_template(
+            messages,
+            return_tensors="pt",
+            add_generation_prompt=True
+        ).to(model.device)
+
+        outputs = model.generate(
+            inputs,
+            max_new_tokens=req.max_tokens,
+            temperature=req.temperature,
+            do_sample=True,
+        )
+
+        generated = outputs[0][inputs.shape[-1]:]
+
+        final_text = tokenizer.decode(generated, skip_special_tokens=True)
 
     return {
         "choices": [
